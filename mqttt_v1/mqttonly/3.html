@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>MQTT → ESP Relay Control</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin-top: 50px; }
+    input, select, button { font-size: 16px; margin: 8px; padding: 8px; }
+    #status { margin-top: 20px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>Send Relay Command to ESP</h2>
+
+  <!-- 1) This is your "mobile device" ID (1, 2, 3, ...) -->
+  <label>Your Device ID:</label><br>
+  <input type="number" id="devId" min="1" value="1"><br>
+
+  <!-- 2) Target ESP MAC (no colons) -->
+  <label>ESP MAC (no colons):</label><br>
+  <input type="text" id="mac" placeholder="e.g. c45bbee08546"><br>
+
+  <!-- 3) Broker selection -->
+  <label>Broker URL:</label><br>
+  <select id="broker">
+    <option value="ws://broker.hivemq.com:8000/mqtt">
+      ws://broker.hivemq.com:8000/mqtt
+    </option>
+    <option value="wss://broker.hivemq.com:8000/mqtt">
+      wss://broker.hivemq.com:8000/mqtt
+    </option>
+  </select><br>
+
+  <!-- 4) Connect & control buttons -->
+  <button onclick="connectMQTT()">Connect</button><br>
+  <button id="btn1" onclick="sendCmd('1')" disabled>
+    Trigger Relay 1
+  </button>
+  <button id="btn2" onclick="sendCmd('2')" disabled>
+    Trigger Relay 2
+  </button>
+
+  <div id="status">Status: idle</div>
+
+  <script>
+    let client;
+
+    function logStatus(msg) {
+      document.getElementById("status").innerText = "Status: " + msg;
+    }
+
+    function connectMQTT() {
+      const devId    = document.getElementById("devId").value.trim();
+      const macVal   = document.getElementById("mac").value.trim().toLowerCase();
+      const broker   = document.getElementById("broker").value;
+
+      if (!devId || !macVal) {
+        logStatus("Device ID & ESP MAC are required");
+        return;
+      }
+
+      // clientId = mac + deviceId (e.g. c45bbee085461)
+      const clientId = macVal + devId;
+
+      logStatus("Connecting…");
+      client = mqtt.connect(broker, { clientId });
+
+      client.on('connect', () => {
+        logStatus("Connected as " + clientId);
+        document.getElementById("btn1").disabled =
+        document.getElementById("btn2").disabled = false;
+      });
+
+      client.on('error', err => {
+        logStatus("Error: " + err.message);
+      });
+
+      client.on('close', () => {
+        logStatus("Disconnected");
+        document.getElementById("btn1").disabled =
+        document.getElementById("btn2").disabled = true;
+      });
+    }
+
+    function sendCmd(relayNum) {
+      if (!client || !client.connected) {
+        logStatus("Not connected");
+        return;
+      }
+      const devId  = document.getElementById("devId").value.trim();
+      const macVal = document.getElementById("mac").value.trim().toLowerCase();
+      // publish to topic = MAC
+      const topic   = macVal;
+      // payload = "<DeviceID>:<RelayNumber>"
+      const payload = devId + ':' + relayNum;
+      client.publish(topic, payload);
+      logStatus(`Sent → ${payload} on ${topic}`);
+    }
+  </script>
+</body>
+</html>

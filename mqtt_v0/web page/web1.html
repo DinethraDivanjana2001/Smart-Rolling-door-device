@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Rolling Door Control</title>
+  <script src="https://unpkg.com/paho-mqtt@1.1.0/paho-mqtt-min.js"></script>
+</head>
+<body>
+  <h1>Rolling Door Control</h1>
+  <button onclick="sendCmd('OPEN')">Open</button>
+  <button onclick="sendCmd('STOP')">Stop</button>
+  <button onclick="sendCmd('CLOSE')">Close</button>
+  <p id="status">Status: --</p>
+
+  <script>
+    const client = new Paho.MQTT.Client(
+      "node02.myqtthub.com", 1883,
+      "webclient_" + Math.floor(Math.random()*10000)
+    );
+
+    client.onConnectionLost = (responseObject) => {
+      document.getElementById("status").innerText = "Status: Disconnected";
+    };
+
+    client.onMessageArrived = (msg) => {
+      document.getElementById("status").innerText =
+        "Status: " + msg.payloadString;
+    };
+
+    client.connect({
+      userName: "Rolling_door1",
+      password: "8065992CC4A8",
+      onSuccess: () => {
+        document.getElementById("status").innerText = "Status: Connected";
+        client.subscribe("rollingdoor/status");
+      },
+      onFailure: (err) => {
+        document.getElementById("status").innerText = "Status: Connection failed";
+        console.error(err);
+      }
+    });
+
+    function sendCmd(cmd) {
+      if (client.isConnected()) {
+        const msg = new Paho.MQTT.Message(cmd);
+        msg.destinationName = "rollingdoor/control";
+        client.send(msg);
+        console.log("Sent command: " + cmd);
+      } else {
+        alert("Not connected to MQTT broker.");
+      }
+    }
+  </script>
+</body>
+</html>

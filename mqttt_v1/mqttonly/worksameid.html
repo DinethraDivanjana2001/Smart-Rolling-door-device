@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>MQTT → ESP Relay Control</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <style>
+    body { text-align:center; font-family:sans-serif; margin-top:40px; }
+    input, select, button { margin:8px; padding:8px; font-size:14px; }
+    #status { margin-top:20px; font-weight:bold; }
+  </style>
+</head>
+<body>
+  <h2>Control ESP Relays</h2>
+
+  <label>ESP MAC (no colons):</label><br>
+  <input id="mac" placeholder="a4e57c1187f1"><br>
+
+  <label>Device ID (1,2,3…):</label><br>
+  <input id="devId" type="number" value="1" min="1"><br>
+
+  <label>Broker URL:</label><br>
+  <select id="broker">
+    <option value="wss://0ef19ee9ef2a43f6b79d88f3fff74b2d.s1.eu.hivemq.cloud:8884/mqtt">
+      HiveMQ Cloud WSS
+    </option>
+  </select><br>
+
+  <button onclick="connectMQTT()">Connect</button><br>
+  <button id="btn1" onclick="sendCmd(1)" disabled>Relay 1</button>
+  <button id="btn2" onclick="sendCmd(2)" disabled>Relay 2</button>
+
+  <div id="status">Status: idle</div>
+
+  <script>
+    let client;
+    const mqttUser = "test1";
+    const mqttPass = "Test@123";
+
+    function log(msg) {
+      document.getElementById("status").innerText = "Status: " + msg;
+    }
+
+    function connectMQTT() {
+      const macVal = document.getElementById("mac").value.trim().toLowerCase();
+      const devId  = document.getElementById("devId").value.trim();
+      const broker = document.getElementById("broker").value;
+      if (!macVal || !devId) return log("Enter both MAC & Device ID");
+
+      // UNIQUE Client-ID per web-client:
+      const clientId = `${macVal}-${devId}`;
+
+      log("Connecting as " + clientId + "…");
+      client = mqtt.connect(broker, {
+        clientId,
+        username: mqttUser,
+        password: mqttPass,
+        protocol: "wss",
+        keepalive: 60
+      });
+
+      client.on("connect", () => {
+        log("Connected");
+        btn1.disabled = btn2.disabled = false;
+      });
+      client.on("error", err => log("Error: " + err.message));
+      client.on("close", ()   => log("Disconnected"));
+    }
+
+    function sendCmd(n) {
+      if (!client || !client.connected) return log("Not connected");
+      const macVal = document.getElementById("mac").value.trim().toLowerCase();
+      // PUBLISH to "<mac>/<deviceId>"
+      const topic = `${macVal}/${document.getElementById("devId").value.trim()}`;
+      client.publish(topic, String(n));
+      log(`Sent "${n}" → ${topic}`);
+    }
+  </script>
+</body>
+</html>

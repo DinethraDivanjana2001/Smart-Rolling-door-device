@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>ESP8266 Relay Control via MQTT</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin-top: 50px;
+    }
+    input, select, button {
+      font-size: 16px;
+      margin: 8px;
+      padding: 8px;
+    }
+    #status {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>ESP8266 Relay Control via MQTT</h2>
+
+  <div>
+    <label>MAC (no colons):</label><br>
+    <input type="text" id="mac" value="c45bbee08546"><br>
+
+    <label>Broker URL:</label><br>
+    <select id="broker">
+      <option value="wss://broker.hivemq.com:8000/mqtt">wss://broker.hivemq.com:8000/mqtt</option>
+      <option value="ws://broker.hivemq.com:8000/mqtt">ws://broker.hivemq.com:8000/mqtt</option>
+    </select><br>
+
+    <button onclick="connectMQTT()">Connect</button><br>
+    <button onclick="triggerRelay(1)" disabled id="btn1">Trigger Relay 1</button>
+    <button onclick="triggerRelay(2)" disabled id="btn2">Trigger Relay 2</button>
+  </div>
+
+  <div id="status">Status: idle</div>
+
+  <script>
+    let client;
+    let mac;
+
+    function logStatus(msg) {
+      document.getElementById("status").innerText = "Status: " + msg;
+    }
+
+    function connectMQTT() {
+      mac = document.getElementById("mac").value.trim().toLowerCase();
+      if (!mac) {
+        logStatus("MAC is required");
+        return;
+      }
+
+      const broker = document.getElementById("broker").value;
+      logStatus("Connecting to broker...");
+      client = mqtt.connect(broker);
+
+      client.on('connect', () => {
+        logStatus("Connected");
+        document.getElementById("btn1").disabled = false;
+        document.getElementById("btn2").disabled = false;
+      });
+
+      client.on('error', (err) => {
+        logStatus("MQTT Error: " + err.message);
+      });
+
+      client.on('close', () => {
+        logStatus("Disconnected");
+        document.getElementById("btn1").disabled = true;
+        document.getElementById("btn2").disabled = true;
+      });
+    }
+
+    function triggerRelay(num) {
+      if (!client || !client.connected) {
+        logStatus("MQTT not connected");
+        return;
+      }
+
+      const topic = `esp8266/${mac}/relay${num}`;
+      client.publish(topic, "pulse");
+      logStatus(`Sent "pulse" to ${topic}`);
+    }
+  </script>
+
+</body>
+</html>

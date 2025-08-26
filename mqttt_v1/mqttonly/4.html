@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>MQTT → ESP Relay Control (HiveMQ Cloud)</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin-top: 50px; }
+    input, select, button { font-size:16px; margin:8px; padding:8px; }
+    #status { margin-top:20px; font-weight:bold; }
+  </style>
+</head>
+<body>
+  <h2>Send Relay Command to ESP</h2>
+
+  <label>Your Device ID:</label><br>
+  <input type="number" id="devId" value="1" min="1"><br>
+
+  <label>ESP MAC (no colons):</label><br>
+  <input type="text" id="mac" placeholder="c45bbee08546"><br>
+
+  <label>Broker URL:</label><br>
+  <select id="broker">
+    <option value="wss://0ef19ee9ef2a43f6b79d88f3fff74b2d.s1.eu.hivemq.cloud:8884/mqtt">
+      wss://0ef19ee9ef2a43f6b79d88f3fff74b2d.s1.eu.hivemq.cloud:8884/mqtt
+    </option>
+  </select><br>
+
+  <button onclick="connectMQTT()">Connect</button><br>
+  <button id="btn1" onclick="sendCmd(1)" disabled>Trigger Relay 1</button>
+  <button id="btn2" onclick="sendCmd(2)" disabled>Trigger Relay 2</button>
+
+  <div id="status">Status: idle</div>
+
+  <script>
+    let client;
+    const ctrlTopic = "esp/control";
+
+    function logStatus(msg) {
+      document.getElementById("status").innerText = "Status: " + msg;
+    }
+
+    function connectMQTT() {
+      const devId    = document.getElementById("devId").value.trim();
+      const macVal   = document.getElementById("mac").value.trim().toLowerCase();
+      const brokerUrl= document.getElementById("broker").value;
+      if (!devId || !macVal) {
+        return logStatus("Device ID & ESP MAC required");
+      }
+
+      // clientId = mac + devId
+      const clientId = macVal + devId;
+
+      logStatus("Connecting…");
+      client = mqtt.connect(brokerUrl, {
+        clientId,
+        username: "test1",     // your HiveMQ credential name
+        password: "Test@123",  // your HiveMQ credential secret
+        protocol: "wss",
+        keepalive: 60
+      });
+
+      client.on('connect', () => {
+        logStatus("Connected as " + clientId);
+        document.getElementById("btn1").disabled =
+        document.getElementById("btn2").disabled = false;
+      });
+      client.on('error', err => logStatus("Error: " + err.message));
+      client.on('close',  ()  => {
+        logStatus("Disconnected");
+        document.getElementById("btn1").disabled =
+        document.getElementById("btn2").disabled = true;
+      });
+    }
+
+    function sendCmd(relayNum) {
+      if (!client || !client.connected) {
+        return logStatus("Not connected");
+      }
+      const devId  = document.getElementById("devId").value.trim();
+      const macVal = document.getElementById("mac").value.trim().toLowerCase();
+      const payload= macVal + ":" + relayNum;
+      client.publish(ctrlTopic, payload);
+      logStatus(`Sent → ${payload} on ${ctrlTopic}`);
+    }
+  </script>
+</body>
+</html>

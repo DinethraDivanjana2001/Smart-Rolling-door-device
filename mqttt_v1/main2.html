@@ -1,0 +1,38 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"/>
+<title>ESP8266 Quick Setup</title>
+<style>
+body{font-family:sans-serif;margin:40px}
+input{width:220px;padding:6px;margin:4px 0}
+button{padding:8px 18px;margin-top:8px}
+</style></head><body>
+<h2>ESP-8266 Configuration</h2>
+
+<section>
+  <h3>Option 1 – Keep this device as Hot-spot</h3>
+  <button onclick="req('/config1','Hot-spot mode stored!')">Keep Hot-spot</button>
+</section><hr>
+
+<section>
+  <h3>Option 2 – Connect to an existing Wi-Fi</h3>
+  <form onsubmit="go(event)">
+    <label>SSID <input name="ssid" required></label><br>
+    <label>Password <input name="pw"  type="password"></label><br>
+    <button type="submit">Configure</button>
+  </form>
+</section>
+
+<script>
+const host="http://192.168.4.1";           // default Soft-AP IP
+function req(p,msg){
+  fetch(host+p).then(r=>r.text()).then(t=>alert(msg+"\n\nESP says: "+t))
+                .catch(e=>alert("Failed: "+e));
+}
+function go(e){
+  e.preventDefault();
+  const ss=document.querySelector('[name=ssid]').value;
+  const pw=document.querySelector('[name=pw]').value;
+  req(`/config2?ssid=${encodeURIComponent(ss)}&pw=${encodeURIComponent(pw)}`,
+      "Credentials sent – ESP will reboot");
+}
+</script>
+</body></html>

@@ -1,0 +1,111 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"/>
+      <title>ESP8266 · Config & Dual-Relay + MQTT Web UI</title>
+      <style>
+        body{font-family:sans-serif;margin:24px;max-width:480px}
+        fieldset{margin-bottom:20px;padding:12px;border:1px solid #888}
+        legend{font-weight:bold}
+        input,button{padding:6px;margin:4px 0;width:100%}
+        .relay-btn{width:48%;margin:6px 1%;font-size:16px}
+      </style>
+      </head><body>
+      
+        <!-- CONFIGURATION PANEL -->
+        <fieldset>
+          <legend>1) Pick operating mode (portal shows 60 s each reboot)</legend>
+          <button onclick="api('/config1')">Keep Hot-spot</button>
+      
+          <h4>LAN Web-server</h4>
+          <input id="l_ssid" placeholder="SSID">
+          <input id="l_pw"   placeholder="Password">
+          <button onclick="lan()">Save LAN Mode</button>
+      
+          <h4>MQTT via HiveMQ</h4>
+          <input id="m_ssid" placeholder="SSID">
+          <input id="m_pw"   placeholder="Password">
+          <input id="m_mac"  placeholder="(opt.) custom MAC for topic">
+          <small>
+            Broker = <code>broker.hivemq.com:1883</code><br>
+            Topics → <code>esp8266/&lt;mac&gt;/relay1</code> &amp; <code>relay2</code>
+          </small><br>
+          <button onclick="mqttSetup()">Save MQTT Mode</button>
+        </fieldset>
+      
+        <!-- HTTP RELAY PULSE PANEL -->
+        <fieldset>
+          <legend>2-ch Relay Pulse via HTTP</legend>
+          <button class="relay-btn" onclick="pulseHTTP(1)">Relay 1</button>
+          <button class="relay-btn" onclick="pulseHTTP(2)">Relay 2</button>
+        </fieldset>
+      
+        <!-- NEW: MQTT-OVER-WEBSOCKETS PANEL -->
+        <fieldset>
+          <legend>MQTT WebSocket Control</legend>
+          <input id="ws_broker" placeholder="Broker WS URL" 
+                 value="ws://broker.hivemq.com:8000/mqtt">
+          <input id="ws_mac"    placeholder="MAC for topic">
+          <button onclick="mqttConnect()">Connect to MQTT WS</button>
+          <div style="display:flex; justify-content:space-between;">
+            <button class="relay-btn" onclick="pulseMQTT(1)">MQTT Relay 1</button>
+            <button class="relay-btn" onclick="pulseMQTT(2)">MQTT Relay 2</button>
+          </div>
+          <p id="ws_status" style="color:green"></p>
+        </fieldset>
+      
+        <!-- MQTT.js from CDN -->
+        <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+        <script>
+          // CORE HTTP helpers
+          const host = location.hostname
+            ? `http://${location.hostname}`
+            : 'http://192.168.4.1';
+          const enc = encodeURIComponent;
+      
+          function api(path){
+            fetch(host+path).then(r=>r.text()).then(alert).catch(alert);
+          }
+          function lan(){
+            const ss=document.getElementById('l_ssid').value,
+                  pw=document.getElementById('l_pw').value;
+            if(!ss) return alert('SSID required');
+            api(`/config2?ssid=${enc(ss)}&pw=${enc(pw)}`);
+          }
+          function mqttSetup(){
+            const ss=document.getElementById('m_ssid').value,
+                  pw=document.getElementById('m_pw').value,
+                  mac=document.getElementById('m_mac').value;
+            if(!ss) return alert('SSID required');
+            api(`/config3?ssid=${enc(ss)}&pw=${enc(pw)}&mac=${enc(mac)}`);
+          }
+          function pulseHTTP(ch){
+            fetch(`${host}/relay?ch=${ch}`).catch(alert);
+          }
+      
+          // MQTT-over-WebSockets
+          let wsClient = null;
+          function mqttConnect(){
+            const url = document.getElementById('ws_broker').value.trim();
+            const mac = document.getElementById('ws_mac').value.trim();
+            if(!url) return alert('Broker URL required');
+            if(!mac) return alert('MAC for topic required');
+            wsClient = mqtt.connect(url);
+            wsClient.on('connect', ()=>{
+              document.getElementById('ws_status').textContent =
+                `Connected to ${url}`;
+            });
+            wsClient.on('error', err=>{
+              document.getElementById('ws_status').textContent =
+                `Error: ${err.message}`;
+            });
+          }
+          function pulseMQTT(ch){
+            if(!wsClient || !wsClient.connected){
+              return alert('MQTT WS not connected');
+            }
+            const mac = document.getElementById('ws_mac').value.trim();
+            const topic = `esp8266/${mac}/relay${ch}`;
+            wsClient.publish(topic, 'PULSE');
+            alert(`Published PULSE to ${topic}`);
+          }
+        </script>
+      </body></html>
+      

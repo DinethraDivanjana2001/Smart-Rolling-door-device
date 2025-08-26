@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>ESP32-C3 Smart Relay</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 480px;
+      margin: 30px auto;
+      padding: 0 16px;
+    }
+    fieldset {
+      margin: 20px 0;
+      padding: 16px;
+      border: 1px solid #888;
+    }
+    legend {
+      font-weight: bold;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin: 6px 0;
+      font-size: 16px;
+    }
+    .relay-btn {
+      width: 30%;
+      margin: 4px 1%;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <fieldset>
+    <legend>1) Pick operating mode (portal shows 60 s each reboot)</legend>
+    <button onclick="api('/config1')">Keep Hot-spot</button>
+
+    <h4>Relay Control (HTTP)</h4>
+    <div>
+      <button class="relay-btn" onclick="relay(1)">Relay 1</button>
+      <button class="relay-btn" onclick="relay(2)">Relay 2</button>
+      <button class="relay-btn" onclick="relay(3)">Relay 3</button>
+    </div>
+
+    <h4>LAN Web-server</h4>
+    <input id="lan_ssid" placeholder="WiFi SSID">
+    <input id="lan_pw" placeholder="WiFi Password">
+    <button onclick="saveLAN()">Save LAN Mode</button>
+
+    <h4>MQTT via HiveMQ (Public Broker)</h4>
+    <input id="mqtt_ssid" placeholder="WiFi SSID">
+    <input id="mqtt_pw" placeholder="WiFi Password">
+    <input id="mqtt_mac" placeholder="(opt.) MAC to listen to">
+    <small>
+      Broker: <code>broker.hivemq.com:1883</code><br>
+      Topic: <code>esp/control</code><br>
+      Payload: <code>&lt;mac&gt;:1</code>, <code>:2</code>, <code>:3</code>
+    </small>
+    <button onclick="saveMQTT()">Save MQTT Mode</button>
+  </fieldset>
+
+  <script>
+    const host = location.hostname ? `http://${location.hostname}` : 'http://192.168.4.1';
+    const enc = encodeURIComponent;
+
+    function api(path) {
+      fetch(host + path)
+        .then(res => res.text())
+        .then(alert)
+        .catch(err => alert("Request failed: " + err));
+    }
+
+    function relay(ch) {
+      fetch(`${host}/relay?ch=${ch}`)
+        .then(res => res.text())
+        .then(alert)
+        .catch(err => alert("Relay failed: " + err));
+    }
+
+    function saveLAN() {
+      const ssid = document.getElementById('lan_ssid').value;
+      const pw = document.getElementById('lan_pw').value;
+      if (!ssid) return alert("SSID required");
+      api(`/config2?ssid=${enc(ssid)}&pw=${enc(pw)}`);
+    }
+
+    function saveMQTT() {
+      const ssid = document.getElementById('mqtt_ssid').value;
+      const pw = document.getElementById('mqtt_pw').value;
+      const mac = document.getElementById('mqtt_mac').value;
+      if (!ssid) return alert("SSID required");
+      api(`/config3?ssid=${enc(ssid)}&pw=${enc(pw)}&mac=${enc(mac)}`);
+    }
+  </script>
+
+</body>
+</html>

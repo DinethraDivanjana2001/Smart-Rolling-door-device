@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Relay Control</title>
+  <style>
+    body { font-family:sans-serif; max-width:400px; margin:40px auto; text-align:center; }
+    input, button { width:100%; padding:10px; margin:10px 0; font-size:16px; }
+    .relay { width:48%; display:inline-block; margin:5px; font-size:16px; }
+  </style>
+</head>
+<body>
+  <h2>MQTT Relay Control</h2>
+
+  <input id="broker" placeholder="WebSocket Broker URL" value="ws://broker.hivemq.com:8000/mqtt">
+  <input id="mac" placeholder="MAC address" value="dc1ed536decc">
+  <button onclick="connectMQTT()">Connect to MQTT</button>
+  <p id="status" style="color:green;"></p>
+
+  <div>
+    <button class="relay" onclick="sendRelay(1)">Relay 1</button>
+    <button class="relay" onclick="sendRelay(2)">Relay 2</button>
+  </div>
+
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script>
+    let client;
+
+    function connectMQTT() {
+      const broker = document.getElementById('broker').value.trim();
+      const mac = document.getElementById('mac').value.trim();
+      if (!broker || !mac) return alert('Broker and MAC required');
+
+      client = mqtt.connect(broker);
+
+      client.on('connect', () => {
+        document.getElementById('status').textContent = '✅ Connected';
+      });
+
+      client.on('error', (err) => {
+        document.getElementById('status').textContent = '❌ Error: ' + err.message;
+      });
+    }
+
+    function sendRelay(num) {
+      if (!client || !client.connected) return alert("MQTT not connected");
+
+      const mac = document.getElementById('mac').value.trim();
+      const topic = `esp/control`;  // Your ESP listens to this
+      const msg = `${mac}:${num}`;  // Format: mac:1 or mac:2
+      client.publish(topic, msg);
+      alert(`Sent ${msg} to ${topic}`);
+    }
+  </script>
+</body>
+</html>

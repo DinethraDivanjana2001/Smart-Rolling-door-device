@@ -1,0 +1,72 @@
+<!DOCTYPE html><html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ESP8266 Relay Control</title>
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<style>
+ body{font-family:Arial;text-align:center;padding-top:40px}
+ input,button{font-size:18px;margin:8px;padding:8px 18px}
+ #control{display:none}
+ #status{margin-top:20px;color:#666}
+</style>
+</head>
+<body>
+
+<h2>ESP8266 Relay Control via MQTT</h2>
+
+<div id="setup">
+  <label>MAC (no colons):</label><br>
+  <input id="mac" placeholder="c45bbee08546"><br>
+  <label>Broker URL:</label><br>
+  <select id="url">
+    <option value="wss://broker.hivemq.com:8000/mqtt">wss://broker.hivemq.com:8000/mqtt</option>
+    <option value="ws://broker.hivemq.com:8000/mqtt">ws://broker.hivemq.com:8000/mqtt</option>
+  </select><br>
+  <button id="connect">Connect</button>
+</div>
+
+<div id="control">
+  <h3>MAC: <span id="macShow"></span></h3>
+  <button id="r1" disabled>Pulse Relay 1</button>
+  <button id="r2" disabled>Pulse Relay 2</button>
+</div>
+
+<div id="status">Status: idle</div>
+
+<script>
+let client, mac;
+
+function setStatus(txt){ document.getElementById("status").textContent = "Status: "+txt; }
+
+document.getElementById("connect").onclick = () => {
+  mac = document.getElementById("mac").value.trim().toLowerCase();
+  if (!/^[0-9a-f]{12}$/.test(mac)){ alert("Invalid MAC"); return; }
+
+  const brokerURL = document.getElementById("url").value;
+  setStatus("connecting to "+brokerURL);
+
+  client = mqtt.connect(brokerURL, {clientId:"web-"+mac, reconnectPeriod:3000});
+
+  client.on("connect", () => {
+    setStatus("connected");
+    document.getElementById("setup").style.display="none";
+    document.getElementById("control").style.display="block";
+    document.getElementById("macShow").textContent = mac;
+    document.getElementById("r1").disabled = false;
+    document.getElementById("r2").disabled = false;
+  });
+
+  client.on("reconnect", ()=> setStatus("reconnecting…"));
+  client.on("close",     ()=> setStatus("connection closed"));
+  client.on("error",     err=> setStatus("error: "+err.message));
+};
+
+function publishRelay(relay){
+  const topic=`esp8266/${mac}/${relay}`;
+  client.publish(topic,"pulse");
+  setStatus("→ published to "+topic);
+}
+document.getElementById("r1").onclick = ()=> publishRelay("relay1");
+document.getElementById("r2").onclick = ()=> publishRelay("relay2");
+</script>
+</body></html>

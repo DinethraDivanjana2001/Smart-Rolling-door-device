@@ -1,0 +1,60 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"/>
+      <title>ESP8266 · HiveMQ Config & Dual-Relay Pulse</title>
+      <style>
+      body{font-family:sans-serif;margin:28px;max-width:420px}
+      fieldset{margin-bottom:22px;padding:14px;border:1px solid #aaa}
+      legend{font-weight:bold}
+      input,button{padding:6px;margin:4px 0;width:100%}
+      .relay-btn{width:48%;font-size:16px;margin:8px 1%}
+      </style></head><body>
+      
+      <fieldset>
+       <legend>Choose mode (portal shows 60 s every reboot)</legend>
+      
+       <button onclick="api('/config1')">1 · Keep Hot-spot</button>
+      
+       <h4>2 · LAN Web-server</h4>
+       <input id="l_ssid" placeholder="SSID" required>
+       <input id="l_pw"   placeholder="Password">
+       <button onclick="lan()">Save LAN Mode</button>
+      
+       <h4>3 · MQTT via HiveMQ</h4>
+       <input id="m_ssid" placeholder="SSID" required>
+       <input id="m_pw"   placeholder="Password">
+       <input id="m_mac"  placeholder="(optional) Custom MAC for topic">
+       <small>MQTT broker fixed to <code>broker.hivemq.com :1883</code><br>
+       Topics → <code>esp8266/&lt;mac&gt;/relay1</code> and <code>relay2</code></small><br>
+       <button onclick="mqtt()">Save MQTT Mode</button>
+      </fieldset>
+      
+      <fieldset>
+       <legend>Pulse Relays (100 ms)</legend>
+       <button class="relay-btn" onclick="pulse(1)">Relay 1</button>
+       <button class="relay-btn" onclick="pulse(2)">Relay 2</button>
+      </fieldset>
+      
+      <script>
+      const host = location.hostname ? `http://${location.hostname}` : 'http://192.168.4.1';
+      const enc  = encodeURIComponent;
+      
+      function api(p){ fetch(host+p).then(r=>r.text()).then(alert).catch(alert); }
+      
+      function lan(){
+        const ss=document.getElementById('l_ssid').value,
+              pw=document.getElementById('l_pw').value;
+        if(!ss){alert('SSID missing');return;}
+        api(`/config2?ssid=${enc(ss)}&pw=${enc(pw)}`);
+      }
+      
+      function mqtt(){
+        const ss=document.getElementById('m_ssid').value,
+              pw=document.getElementById('m_pw').value,
+              mc=document.getElementById('m_mac').value;
+        if(!ss){alert('SSID missing');return;}
+        api(`/config3?ssid=${enc(ss)}&pw=${enc(pw)}&mac=${enc(mc)}`);
+      }
+      
+      function pulse(ch){ fetch(`${host}/relay?ch=${ch}`).catch(alert); }
+      </script>
+      </body></html>
+      

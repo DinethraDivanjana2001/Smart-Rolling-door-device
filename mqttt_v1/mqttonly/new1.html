@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>MQTT Relay Controller</title>
+<style>
+  body{font-family:sans-serif;margin:1.5rem}
+  input,button{padding:.4rem .6rem;margin:.3rem}
+  pre{height:220px;border:1px solid #ccc;background:#f7f7f7;
+      overflow:auto;padding:.5rem}
+</style>
+</head>
+<body>
+<h2>MQTT Relay Controller</h2>
+
+<label>Broker (WSS) <small>[fixed]</small>:
+  <input id="broker" size="64" readonly
+         value="wss://0ef19ee9ef2a43f6b79d88f3fff74b2d.s1.eu.hivemq.cloud:8884/mqtt">
+</label><br>
+
+<label>Client ID (number):
+  <input id="cid" value="1" pattern="[0-9]+">
+</label><br>
+
+<label>Topic (ESP MAC, e.g. 2CF43270EBE2):
+  <input id="topic">
+</label><br>
+
+<button id="btnConnect">Connect</button>
+<button id="r1" disabled>Relay 1 (pin 12)</button>
+<button id="r2" disabled>Relay 2 (pin 14)</button>
+
+<pre id="log"></pre>
+
+<!-- mqtt.js from HiveMQ CDN -->
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script>
+const USER='test1', PASS='Test@123';
+let client;
+
+function log(t){ const p=document.getElementById('log');
+                 p.textContent+=t+'\n'; p.scrollTop=p.scrollHeight; }
+
+btnConnect.onclick=()=>{
+  const broker = document.getElementById('broker').value.trim();
+  const id     = document.getElementById('cid').value.trim() || '1';
+  const topic  = document.getElementById('topic').value.trim().toUpperCase();
+
+  if(!/^[0-9]+$/.test(id)){alert('Client ID must be numeric'); return;}
+  if(topic.length!==12){alert('Enter 12‑digit ESP MAC'); return;}
+
+  client = mqtt.connect(broker,{
+    clientId: id, username: USER, password: PASS
+  });
+
+  client.on('connect',()=>{
+    log('✔ connected as '+id);
+    client.subscribe(topic);
+    r1.disabled = r2.disabled = false;
+  });
+  client.on('error', err=> log('⚠ '+err.message));
+  client.on('message',(t,m)=> log('[IN] '+m.toString()));
+
+  r1.onclick = ()=> client.publish(topic,'relay1');
+  r2.onclick = ()=> client.publish(topic,'relay2');
+};
+</script>
+</body>
+</html>

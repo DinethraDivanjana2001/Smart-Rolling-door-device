@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Smart Door Controller</title>
+  <style>
+    body {
+      font-family: Arial;
+      text-align: center;
+      margin-top: 50px;
+    }
+    button {
+      font-size: 20px;
+      padding: 15px 30px;
+      margin: 10px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Smart Door Controller</h1>
+
+  <label for="esp_ip">ESP32 IP:</label>
+  <input type="text" id="esp_ip" placeholder="e.g. 192.168.1.50">
+  <br><br>
+
+  <button onclick="sendCommand('open')">OPEN</button>
+  <button onclick="sendCommand('stop')">STOP</button>
+  <button onclick="sendCommand('close')">CLOSE</button>
+
+  <p id="response"></p>
+
+  <script>
+    function sendCommand(cmd) {
+      const ip = document.getElementById("esp_ip").value.trim();
+      if (!ip) {
+        alert("Please enter ESP32 IP address first.");
+        return;
+      }
+
+      fetch(`http://${ip}/${cmd}`)
+        .then(response => response.text())
+        .then(data => {
+          document.getElementById("response").innerText = `ESP32 response: ${data}`;
+        })
+        .catch(err => {
+          document.getElementById("response").innerText = "Error: Could not reach ESP32.";
+        });
+    }
+  </script>
+</body>
+</html>
